@@ -8,6 +8,5 @@ neko po-lang-switcher PATH-TO-.PO-FILE [OVERRIDE]
 
 TODO : 
  - use X-Poedit-KeywordsList to find strings
- - fixes regarding comments
 
 

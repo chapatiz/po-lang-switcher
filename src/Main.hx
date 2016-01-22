@@ -37,6 +37,9 @@ class Main
 				return;
 			}
 			
+			//show report
+			Sys.println(poReader.report());
+			
 			//save new po file
 			try{
 			File.saveContent(poPath + ".trad", poReader.res);
@@ -44,6 +47,17 @@ class Main
 				Sys.println("Error while saving po file:");
 				Sys.println(e);
 			}
+			
+			//save duplicated
+			try{
+			File.saveContent(poPath + ".duplicated", poReader.duplicated);
+			}catch (e:Dynamic) {
+				Sys.println("Error while saving duplicated file:");
+				Sys.println(e);
+			}
+			
+			Sys.println("Completed.");
+			
 		}
 	}	
 }

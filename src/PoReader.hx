@@ -1,4 +1,5 @@
 package;
+import haxe.ds.StringMap;
 import haxe.io.Eof;
 import haxe.io.Input;
 import sys.io.File;
@@ -14,14 +15,18 @@ class PoReader
 	var fc:String;//first char of line
 	var basePath:String;
 	var poDir:String;
+	var msgstrMap:StringMap<Int>;
+	var cpt:Int;
 
 	public var res:String;
+	public var duplicated:String;
 	
 	public function new(path:String,overrideFile:Bool) 
 	{
 		var tmp = path.split("/");
 		tmp.pop();
 		poDir = tmp.join("/") + "/";
+		msgstrMap = new StringMap<Int>();
 		
 		res = "";
 		try{
@@ -54,7 +59,7 @@ class PoReader
 	function parseTrad(overrideFile:Bool):Void
 	{
 		var tb = new TradBlock(basePath);
-		var cpt = 0;
+		cpt = 0;
 		do{
 			var msgidExp = ~/msgid "(.*)"/i;
 			var msgstrExp = ~/msgstr "(.*)"/i;
@@ -88,8 +93,14 @@ class PoReader
 					continue;
 				tb.run(overrideFile);
 				cpt++;
-				res += tb.toReverseString();
-				res += "\n";
+				if (msgstrMap.exists(tb.msgstr))
+				{
+					duplicated += tb.toReverseString() + "\n";
+					msgstrMap.set(tb.msgstr,cast(msgstrMap.get(tb.msgstr),Int)+1);
+				}else{
+					res += tb.toReverseString() + "\n";
+					msgstrMap.set(tb.msgstr,1);
+				}
 				tb = new TradBlock(basePath);
 			}else {
 				//trace("no matching:" + line);
@@ -98,5 +109,21 @@ class PoReader
 		}while (line != null);
 			
 	}
+	
+	public function report():String
+	{
+		var rep = "treated : " + cpt + "\n";
+		rep += "duplicated :\n";
+		for (s in msgstrMap.keys())
+		{
+			var occurence = msgstrMap.get(s);
+			if (occurence > 1)
+			{
+				rep += s +" : " + occurence+"\n";
+			}
+		}
+		return rep;
+	}
+	
 	
 }
