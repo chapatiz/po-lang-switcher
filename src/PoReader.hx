@@ -67,21 +67,27 @@ class PoReader
 				}
 				break;
 			}
-			if (line.substr(0, 2) == "#:")
+			
+			
+			//check content
+			if (line.substr(0, 2) == "#~") { //comment
+				res += line+"\n";
+			}else if (line.substr(0, 2) == "#:")//location
 			{
 				//trace(line);
 				tb.addLocation(line.substr(3));
-			}else if ( msgidExp.match(line))
+			}else if ( msgidExp.match(line))//message id
 			{
 				tb.msgid = msgidExp.matched(1);
 				if (tb.msgid == "")
 					tb = new TradBlock(basePath);
-			}else if ( msgstrExp.match(line))
+			}else if ( msgstrExp.match(line))//message translation
 			{
 				tb.msgstr = msgstrExp.matched(1);
+				if (tb.msgstr == "") //do not treat not translated string
+					continue;
 				tb.run(overrideFile);
 				cpt++;
-
 				res += tb.toReverseString();
 				res += "\n";
 				tb = new TradBlock(basePath);
