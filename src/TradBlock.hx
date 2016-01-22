@@ -27,6 +27,8 @@ class TradBlock
 	{
 		locations = [];
 		
+		msgid = "";
+		msgstr = "";
 		this.basePath = basePath;
 	}
 	

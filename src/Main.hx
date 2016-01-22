@@ -29,13 +29,13 @@ class Main
 			var poReader = null;
 			
 			//treat current po file
-			try{
+			//try{
 			poReader = new PoReader(poPath,overrideFile);// "../test/tchat/lang/en.po");
-			}catch (e:Dynamic) {
-				Sys.println("Error while parsing po file:");
-				Sys.println(e);
-				return;
-			}
+			//}catch (e:Dynamic) {
+				//Sys.println("Error while parsing po file:");
+				//Sys.println(e);
+				//return;
+			//}
 			
 			//show report
 			Sys.println(poReader.report());

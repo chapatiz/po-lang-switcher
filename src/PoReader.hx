@@ -43,7 +43,7 @@ class PoReader
 	{
 		do{
 			line = po.readLine();
-			var basePathEx = ~/"X-Poedit-Basepath: (.*)\\n"/;
+			var basePathEx = ~/^"X-Poedit-Basepath: (.*)\\n"/;
 			if (basePathEx.match(line))
 			{
 				basePath = poDir+basePathEx.matched(1);
@@ -58,11 +58,13 @@ class PoReader
 	
 	function parseTrad(overrideFile:Bool):Void
 	{
+		var status = "normal";
 		var tb = new TradBlock(basePath);
 		cpt = 0;
 		do{
-			var msgidExp = ~/msgid "(.*)"/i;
-			var msgstrExp = ~/msgstr "(.*)"/i;
+			var msgidExp = ~/^msgid "(.*)"/i;//find msgid "something"
+			var msgstrExp = ~/^msgstr "(.*)"/i;//find msgstr "something"
+			var contentExp = ~/^"(.*)"/i;//find "something"
 			try{
 			line = po.readLine();
 			}catch (e:Dynamic) {
@@ -84,13 +86,21 @@ class PoReader
 			}else if ( msgidExp.match(line))//message id
 			{
 				tb.msgid = msgidExp.matched(1);
-				if (tb.msgid == "")
-					tb = new TradBlock(basePath);
+				
+				if (tb.msgid == "")//start a multiline id
+				{
+					status = "msgid";
+				}
 			}else if ( msgstrExp.match(line))//message translation
 			{
 				tb.msgstr = msgstrExp.matched(1);
-				if (tb.msgstr == "") //do not treat not translated string
+				
+				if (tb.msgstr == "") //start a multiline str
+				{
+					status = "msgstr";
 					continue;
+				}
+				
 				tb.run(overrideFile);
 				cpt++;
 				if (msgstrMap.exists(tb.msgstr))
@@ -102,8 +112,37 @@ class PoReader
 					msgstrMap.set(tb.msgstr,1);
 				}
 				tb = new TradBlock(basePath);
+				
+			}if (contentExp.match(line)) {//content for id or str
+				
+				if (status == "msgid")
+				{
+					tb.msgid += contentExp.matched(1);
+					
+				}else if (status == "msgstr"){
+					tb.msgstr += contentExp.matched(1);
+				}
+			
 			}else {
-				//trace("no matching:" + line);
+				if (status != "normal")//back to normal treat current pending block and start a new one
+				{
+					tb.run(overrideFile);
+					cpt++;
+					try{
+					if (msgstrMap.exists(tb.msgstr))
+					{
+						duplicated += tb.toReverseString() + "\n";
+						msgstrMap.set(tb.msgstr,cast(msgstrMap.get(tb.msgstr),Int)+1);
+					}else{
+						res += tb.toReverseString() + "\n";
+						msgstrMap.set(tb.msgstr,1);
+					}
+					}catch (e:Dynamic) {
+							throw "tb.msgstr:" + tb.msgstr + " " + e;
+					}
+					tb = new TradBlock(basePath);
+					status == "normal";
+				}
 				res += line+"\n";
 			}
 		}while (line != null);
