@@ -42,6 +42,15 @@ class TradBlock
 	{
 		var sf:haxe.io.Input;
 		var line:String = "";
+		
+		if (msgid == "" || msgstr == "")
+		{
+			trace(this);
+			return;
+		}
+		
+		
+		
 		for (des in references)
 		{
 			var b = new StringBuf();
@@ -62,9 +71,32 @@ class TradBlock
 					if(currentLine < lineNum)
 						b.add(line+"\n");
 				}
+				//remove '"/n"'
+				var r = ~/"\/n"/g;
+				var cleanMsgid = r.replace(msgid, "");
+				var cleanMsgstr = r.replace(msgstr, "");
+				
+				if (cleanMsgid != msgid)
+					trace("msgid: "+cleanMsgid + " != " + msgid);
+				if (cleanMsgstr != msgstr)
+					trace("msgstr: "+cleanMsgstr + " != " + msgstr);
+				
+				var changedLine = "";
 				//replace traduction
-				line = StringTools.replace(line, msgid, msgstr);
-				b.add(line+"\n");	
+				if (line.indexOf(cleanMsgid) != -1)
+				{
+					changedLine = StringTools.replace(line, cleanMsgid, cleanMsgstr);
+				}else{
+					trace("________________________");
+					
+					trace(this);
+					trace("line :" + line);
+					trace("msgid: " + cleanMsgid + " != " + msgid);
+					trace("________________________");
+				}
+				
+				
+				b.add(changedLine+"\n");	
 			}
 			
 			//every instance from the file are replaced copy remaining lines in buffer
@@ -109,6 +141,30 @@ class TradBlock
 	{
 		var res = "";
 		
+		res += propertiesToString();
+		
+		res += 'msgid "' + msgstr + '"\n';
+		res += 'msgstr "' + msgid + '"\n';
+		
+		return res;
+	}
+	
+	public function toString():String
+	{
+		var res = "";
+		
+		res += propertiesToString();
+		
+		res += 'msgid "' + msgid + '"\n';
+		res += 'msgstr "' + msgstr + '"\n';
+		
+		return res;
+	}
+	
+	function propertiesToString():String
+	{
+		var res = "";
+		
 		for (c in translatorComments)
 		{
 			res += "# " + c + "\n";
@@ -132,9 +188,6 @@ class TradBlock
 		{
 			res += "#, " + f + "\n";
 		}
-		
-		res += 'msgid "' + msgstr + '"\n';
-		res += 'msgstr "' + msgid + '"\n';
 		
 		return res;
 	}

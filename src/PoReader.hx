@@ -94,7 +94,6 @@ class PoReader
 			
 			if (referenceExp.match(line))//reference
 			{
-				trace("add reference");
 				tb.addReference(referenceExp.matched(1));
 				
 			}else if ( msgidExp.match(line))//message id
@@ -125,7 +124,8 @@ class PoReader
 			{
 				tb.extractedComments.push(extractedCommentExp.matched(1));
 				
-			}else if (contentExp.match(line)) {//content for id or str
+			}else if (contentExp.match(line)) //content for id or str
+			{
 				
 				if (status == "msgid")
 				{
@@ -135,8 +135,13 @@ class PoReader
 					tb.msgstr += contentExp.matched(1);
 				}
 			
-			}else {
+			}else if (flagExp.match(line))
+			{
+				tb.flags.push(flagExp.matched(1));
+			
+			} else if(tb.msgid != ""){
 				//back to normal treat current pending block and start a new one
+					
 				
 					tb.run(overrideFile);
 					cpt++;
