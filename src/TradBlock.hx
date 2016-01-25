@@ -15,20 +15,26 @@ typedef Location = {
  
 class TradBlock
 {
-	public var locations:Array<Location>;
+	public var references:Array<Location>;
 	public var msgid:String;
 	public var msgstr:String;
-	
+	public var translatorComments:Array<String>;
+	public var extractedComments:Array<String>;
+	public var flags:Array<String>;
 	
 	
 	var basePath:String;
 	
 	public function new(basePath:String) 
 	{
-		locations = [];
+		references = [];
+		translatorComments = [];
+		extractedComments = [];
+		flags = [];
 		
 		msgid = "";
 		msgstr = "";
+		
 		this.basePath = basePath;
 	}
 	
@@ -36,7 +42,7 @@ class TradBlock
 	{
 		var sf:haxe.io.Input;
 		var line:String = "";
-		for (des in locations)
+		for (des in references)
 		{
 			var b = new StringBuf();
 			//var datas = des.split(":");
@@ -83,15 +89,15 @@ class TradBlock
 		}
 	}
 	
-	public function addLocation(location:String)
+	public function addReference(location:String)
 	{
 		
 		var data = location.split(":");
-		var existing = locations.filter(function(l) { return l.file == data[0]; } );
+		var existing = references.filter(function(l) { return l.file == data[0]; } );
 		
 		if (existing.length == 0)
 		{
-			locations.push( { file:data[0], lines:[Std.parseInt(data[1])] } );
+			references.push( { file:data[0], lines:[Std.parseInt(data[1])] } );
 		}else {
 			//trace("existing:" + existing);
 			existing[0].lines.push(Std.parseInt(data[1]));
@@ -102,13 +108,31 @@ class TradBlock
 	public function toReverseString():String
 	{
 		var res = "";
-		for (des in locations)
+		
+		for (c in translatorComments)
+		{
+			res += "# " + c + "\n";
+		}
+		
+		for (ec in extractedComments)
+		{
+			res += "#. " + ec + "\n";
+		}
+		
+		for (des in references)
 		{
 			for (i in 0...des.lines.length)
 			{
 				res += "#: " + des.file +":"+des.lines[i]+ "\n";
 			}
 		}
+		
+		
+		for (f in flags)
+		{
+			res += "#, " + f + "\n";
+		}
+		
 		res += 'msgid "' + msgstr + '"\n';
 		res += 'msgstr "' + msgid + '"\n';
 		

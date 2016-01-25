@@ -42,7 +42,7 @@ class Main
 			
 			//save new po file
 			try{
-			File.saveContent(poPath + ".trad", poReader.res);
+			File.saveContent(poPath + ".trad", poReader.generatePoString());
 			}catch (e:Dynamic) {
 				Sys.println("Error while saving po file:");
 				Sys.println(e);

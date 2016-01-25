@@ -15,7 +15,7 @@ class PoReader
 	var fc:String;//first char of line
 	var basePath:String;
 	var poDir:String;
-	var msgstrMap:StringMap<Int>;
+	var msgstrMap:StringMap<TradBlock>;
 	var cpt:Int;
 
 	public var res:String;
@@ -26,7 +26,7 @@ class PoReader
 		var tmp = path.split("/");
 		tmp.pop();
 		poDir = tmp.join("/") + "/";
-		msgstrMap = new StringMap<Int>();
+		msgstrMap = new StringMap<TradBlock>();
 		
 		res = "";
 		try{
@@ -39,6 +39,9 @@ class PoReader
 		po.close();
 	}
 	
+	/**
+	 * parse and write header to res string
+	 */
 	function parseHeader()
 	{
 		do{
@@ -56,15 +59,26 @@ class PoReader
 		trace("header parsed");
 	}
 	
+	/**
+	 * find translation block and change code files
+	 * @param	overrideFile
+	 */
 	function parseTrad(overrideFile:Bool):Void
 	{
 		var status = "normal";
 		var tb = new TradBlock(basePath);
 		cpt = 0;
-		do{
+		
+		
+		do {
+			var referenceExp = ~/^#: (.*)/i;//find #: something
+			var translatorCommentExp = ~/^# (.*)/i;//find # something
+			var extractedCommentExp = ~/^#\. (.*)/i;//find #. something
 			var msgidExp = ~/^msgid "(.*)"/i;//find msgid "something"
 			var msgstrExp = ~/^msgstr "(.*)"/i;//find msgstr "something"
 			var contentExp = ~/^"(.*)"/i;//find "something"
+			var flagExp = ~/^#, (.*)/i;//find #, something
+			
 			try{
 			line = po.readLine();
 			}catch (e:Dynamic) {
@@ -77,12 +91,12 @@ class PoReader
 			
 			
 			//check content
-			if (line.substr(0, 2) == "#~") { //comment
-				res += line+"\n";
-			}else if (line.substr(0, 2) == "#:")//location
+			
+			if (referenceExp.match(line))//reference
 			{
-				//trace(line);
-				tb.addLocation(line.substr(3));
+				trace("add reference");
+				tb.addReference(referenceExp.matched(1));
+				
 			}else if ( msgidExp.match(line))//message id
 			{
 				tb.msgid = msgidExp.matched(1);
@@ -91,8 +105,11 @@ class PoReader
 				{
 					status = "msgid";
 				}
+				
 			}else if ( msgstrExp.match(line))//message translation
 			{
+				status = "normal";
+				
 				tb.msgstr = msgstrExp.matched(1);
 				
 				if (tb.msgstr == "") //start a multiline str
@@ -100,20 +117,15 @@ class PoReader
 					status = "msgstr";
 					continue;
 				}
+			}else if (translatorCommentExp.match(line))
+			{
+				tb.translatorComments.push(translatorCommentExp.matched(1));
 				
-				tb.run(overrideFile);
-				cpt++;
-				if (msgstrMap.exists(tb.msgstr))
-				{
-					duplicated += tb.toReverseString() + "\n";
-					msgstrMap.set(tb.msgstr,cast(msgstrMap.get(tb.msgstr),Int)+1);
-				}else{
-					res += tb.toReverseString() + "\n";
-					msgstrMap.set(tb.msgstr,1);
-				}
-				tb = new TradBlock(basePath);
+			}else if (extractedCommentExp.match(line))
+			{
+				tb.extractedComments.push(extractedCommentExp.matched(1));
 				
-			}if (contentExp.match(line)) {//content for id or str
+			}else if (contentExp.match(line)) {//content for id or str
 				
 				if (status == "msgid")
 				{
@@ -124,43 +136,68 @@ class PoReader
 				}
 			
 			}else {
-				if (status != "normal")//back to normal treat current pending block and start a new one
-				{
+				//back to normal treat current pending block and start a new one
+				
 					tb.run(overrideFile);
 					cpt++;
 					try{
 					if (msgstrMap.exists(tb.msgstr))
 					{
+						//merging
+						var etb = msgstrMap.get(tb.msgstr);
+						etb.msgid += tb.msgid;
+						etb.extractedComments = etb.extractedComments.concat(tb.extractedComments);
+						etb.flags = etb.flags.concat(tb.flags);
+						etb.translatorComments = etb.translatorComments.concat(tb.translatorComments);
+						etb.references = etb.references.concat(tb.references);
+						msgstrMap.set(tb.msgstr, etb);
+						
+						//add fuzzy flag if not exists
+						var fuz = etb.flags.filter(function(s) { return s == "fuzzy"; } );
+						if (fuz.length == 0)
+						{
+							etb.flags.push("fuzzy");
+						}
+						
 						duplicated += tb.toReverseString() + "\n";
-						msgstrMap.set(tb.msgstr,cast(msgstrMap.get(tb.msgstr),Int)+1);
 					}else{
-						res += tb.toReverseString() + "\n";
-						msgstrMap.set(tb.msgstr,1);
+						//res += tb.toReverseString() + "\n";
+						msgstrMap.set(tb.msgstr,tb);
 					}
 					}catch (e:Dynamic) {
 							throw "tb.msgstr:" + tb.msgstr + " " + e;
 					}
 					tb = new TradBlock(basePath);
 					status == "normal";
-				}
-				res += line+"\n";
+				
+				//res += line+"\n";
 			}
 		}while (line != null);
 			
 	}
 	
+	public function generatePoString():String
+	{
+		for (tb in msgstrMap)
+		{
+			res += tb.toReverseString() + "\n";
+		}
+		
+		return res;
+	}
+	
 	public function report():String
 	{
 		var rep = "treated : " + cpt + "\n";
-		rep += "duplicated :\n";
-		for (s in msgstrMap.keys())
-		{
-			var occurence = msgstrMap.get(s);
-			if (occurence > 1)
-			{
-				rep += s +" : " + occurence+"\n";
-			}
-		}
+		//rep += "duplicated :\n";
+		//for (s in msgstrMap.keys())
+		//{
+			//var occurence = msgstrMap.get(s);
+			//if (occurence > 1)
+			//{
+				//rep += s +" : " + occurence+"\n";
+			//}
+		//}
 		return rep;
 	}
 	
