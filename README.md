@@ -1,5 +1,9 @@
 # po-lang-switcher
-Switch code string language using po file
+Switch strings language using po file
+
+Exchange msgid and msgstr in po file and code files.
+Merge duplicate keys by concatenate their translation. Flag it as 'messy'.
+This way by opening the generated .po in poedit you can easily chose the right traduction.
 
 USAGE :
 
